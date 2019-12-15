@@ -24,7 +24,7 @@ class User {
 public:
     User(){}
 
-    User(int socket, in_addr ip, string name);
+    User(int socket, in_addr ip);
 
     void operator()(){runReadingFromUserSocket();}
 
@@ -55,6 +55,10 @@ public:
     void runReadingFromUserSocket();
 
     int getLife();
+
+    void setName(string name);
+
+    void informAboutUserType(bool isGuessingType);
 };
 
 

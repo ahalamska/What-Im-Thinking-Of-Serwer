@@ -64,7 +64,7 @@ void GameManager::resendResponse(const string& question, string response) {
     string sentence =  question + " -> " + response;
     for(auto user : users){
         int fd = user.first;
-        send(fd, &sentence, sentence.size(), MSG_DONTWAIT);
+        messagesHandler.sendMessage(fd, sentence, QA);
     }
 }
 
@@ -83,11 +83,14 @@ map<int, User*> GameManager::getUsers(){
 void GameManager::addUser(User& user) {
     users[user.getSocketFd()] = &user;
     if(users.size() == 1){
-        GameManager::getInstance().setUserASockedFd(user.getSocketFd());
+        setUserASockedFd(user.getSocketFd());
+        messagesHandler.sendMessage(user.getSocketFd(), "", USER_A);
     }
-    if(users.size() == 2){
+    else if(users.size() == 2){
+        messagesHandler.sendMessage(user.getSocketFd(), "", USER_B);
         createGame();
     } else{
+        messagesHandler.sendMessage(user.getSocketFd(), "", USER_B);
         addUserToAlreadyBeganGame(user);
     }
 
@@ -135,7 +138,7 @@ void GameManager::sendPreviousQuestions(int fd) {
     string sentence;
     for (auto& question : questionsAnswers) {
         sentence = question.first + " -> " + question.second;
-        send(fd, &sentence, sentence.size(), MSG_DONTWAIT);
+        messagesHandler.sendMessage(fd, sentence, QA);
     }
 }
 

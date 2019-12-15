@@ -5,6 +5,7 @@
 #include <map>
 #include <condition_variable>
 #include "User.h"
+#include "MessagesHandler.cpp"
 
 using namespace std;
 static condition_variable CV;
@@ -26,6 +27,8 @@ public:
 
 private:
 
+    MassagesHandler messagesHandler;
+
     string word;
 
     int userASockedFd;
@@ -34,7 +37,8 @@ private:
 
     map<int, User*> users;
 
-    GameManager(){}
+    GameManager(){
+    }
 
 public:
     void setWord(const string &word);

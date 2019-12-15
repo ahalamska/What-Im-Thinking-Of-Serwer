@@ -7,8 +7,7 @@
 #include <utility>
 #include "GameManager.h"
 
-User::User(int socket, in_addr ip, string name) : socketFd(socket), ip(ip), name(move(name)),
-                                                  life(BEGINNING_NUMBER_OF_LIFE) {}
+User::User(int socket, in_addr ip) : socketFd(socket), ip(ip), life(BEGINNING_NUMBER_OF_LIFE) {}
 
 
 int User::getSocketFd() const {
@@ -32,6 +31,7 @@ void User::askQuestion() {
 }
 
 void User::runReadingFromUserSocket() {
+    informAboutUserType(this->socketFd == GameManager::getInstance().getUserASockedFd());
     while (life != 0) {
         string sentence;
         int count;
@@ -96,6 +96,16 @@ void User::askForQuestion() {
 
 int User::getLife() {
     return life;
+}
+
+void User::setName(string name) {
+    this->name = name;
+}
+
+void User::informAboutUserType(bool isGuessingType) {
+    string msg = isGuessingType ? "A||//" : "B||//";
+    send(this->socketFd, &msg, msg.length(), MSG_DONTWAIT);
+
 }
 
 
