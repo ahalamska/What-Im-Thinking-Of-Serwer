@@ -10,14 +10,18 @@
 #include <cygwin/in.h>
 #include <unistd.h>
 #include <mutex>
-#include "GameManager.h"
+#include "../GameManagement/GameManager.h"
+#include "../ConnectionManagement/MessageType.h"
+#include "../ConnectionManagement/Message.h"
+#include "../ConnectionManagement/MessagesHandler.h"
+
+#include <utility>
+
+class MessagesHandler;
 
 using namespace std;
 
 static int BEGINNING_NUMBER_OF_LIFE;
-static string questionPrefix = "question::";
-
-static string wordPrefix = "word::";
 
 class User {
 
@@ -26,9 +30,11 @@ public:
 
     User(int socket, in_addr ip);
 
-    void operator()(){runReadingFromUserSocket();}
+    void operator()(){ runReadingAnswers();}
 
     int getSocketFd() const;
+
+    const in_addr &getIp() const;
 
 private:
     int socketFd;
@@ -37,10 +43,7 @@ private:
     int life;
     string question;
 
-    void askForQuestion();
 public:
-
-    void createWord();
 
     void saveQuestion(string question);
 
@@ -48,17 +51,15 @@ public:
 
     void guessWord(string word);
 
-    string askForWord();
-
-    void removeUser();
-
-    void runReadingFromUserSocket();
+    void runReadingAnswers();
 
     int getLife();
 
-    void setName(string name);
+    void askForQuestion();
 
-    void informAboutUserType(bool isGuessingType);
+    void win();
+
+    void loose();
 };
 
 
