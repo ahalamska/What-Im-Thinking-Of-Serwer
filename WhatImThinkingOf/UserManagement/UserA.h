@@ -37,9 +37,9 @@ public:
 
     int getSocketFd();
 
-    void askQuestion(string question);
+    void askQuestion(const string& question);
 
-    void sendAnswer(Message message);
+    void sendAnswer(const Message& message);
 
     void win();
 

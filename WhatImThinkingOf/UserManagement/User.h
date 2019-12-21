@@ -21,7 +21,7 @@ class MessagesHandler;
 
 using namespace std;
 
-static int BEGINNING_NUMBER_OF_LIFE;
+static int BEGINNING_NUMBER_OF_LIFE = 3;
 
 class User {
 

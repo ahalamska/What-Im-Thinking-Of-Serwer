@@ -35,7 +35,7 @@ public :
     MessagesHandler(MessagesHandler const&) = delete;
     void operator=(MessagesHandler const&)  = delete;
 
-    Message retrieveMessage(string message);
+    Message retrieveMessage(const string& message);
 
     Message readMessage(int fd);
 

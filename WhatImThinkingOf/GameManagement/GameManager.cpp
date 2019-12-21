@@ -12,7 +12,10 @@ using namespace std;
 
 
 void GameManager::createGame() {
-    userA->createWord();
+    cout<<"Creating new game... "<< endl;
+    if(word.empty()){
+        userA->createWord();
+    }
     thread questionThread([](){
         GameManager::getInstance().questionsLoop();
     });
@@ -57,8 +60,8 @@ bool GameManager::guessWord(const string& word) {
         return this->word == word;
 }
 
-void GameManager::resendResponse(const string& question, string response) {
-    this->questionsAnswers[question] = std::move(response);
+void GameManager::resendResponse(const string& question, const string& response) {
+    this->questionsAnswers[question] = response;
     string sentence =  question + "->" + response;
     for(auto user : users){
         int fd = user.first;
@@ -67,7 +70,9 @@ void GameManager::resendResponse(const string& question, string response) {
 }
 
 void GameManager::setWord(const string& word) {
-    GameManager::word = word;
+    if(this->word.empty()) {
+        this->word = word;
+    }
 }
 
 map<int, User*> GameManager::getUsers(){
@@ -82,23 +87,24 @@ void GameManager::addUserA(UserA &userA) {
         userARef->runReadingAnswers();
     });
     printf("Sending information about UserType : User A\n");
-    MessagesHandler::getInstance().sendMessage(userA.getSocketFd(), "You are gamer A", USER_A);
+    MessagesHandler::getInstance().sendMessage(userA.getSocketFd(), "", USER_A);
+    userAThread.join();
 }
 
 void GameManager::addUser(User& user) {
+    printf("Adding user B\n");
     users[user.getSocketFd()] = &user;
     User* userRef = &user;
         thread userThread([userRef](){
             userRef->runReadingAnswers();
         });
-    userThread.detach();
+    MessagesHandler::getInstance().sendMessage(user.getSocketFd(), "", USER_B);
     if(users.size() == 1){
-        MessagesHandler::getInstance().sendMessage(user.getSocketFd(), "", USER_B);
         createGame();
     } else{
-        MessagesHandler::getInstance().sendMessage(user.getSocketFd(), "", USER_B);
         addUserToAlreadyBeganGame(user);
     }
+    userThread.join();
 
 }
 

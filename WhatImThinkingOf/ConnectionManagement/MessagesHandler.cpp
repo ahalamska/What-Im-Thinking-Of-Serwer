@@ -12,7 +12,6 @@ string MessagesHandler::getValue(MessageType type) {
 
 void MessagesHandler::sendMessage(int receiverFd, const string &message, MessageType type) {
     string finalMessage = getValue(type) + message + "//\r";
-    printf("Prepared message: %s\n", finalMessage.data());
     char* data = finalMessage.data();
     printf("Sending message: %s\n", data);
     send(receiverFd, data, finalMessage.size(), MSG_DONTWAIT);
@@ -20,17 +19,19 @@ void MessagesHandler::sendMessage(int receiverFd, const string &message, Message
 }
 
 Message MessagesHandler::readMessage(int fd) {
+    printf("Waiting for message\n");
     string sentence;
     int count;
     do {
         char buf[255];
         count = read(fd, buf, 255);
         sentence += buf;
+        printf("Received %d bytes: %s \n", count, sentence.c_str());
     } while (count == 255);
     return retrieveMessage(sentence);
 }
 
-Message MessagesHandler::retrieveMessage(string message) {
+Message MessagesHandler::retrieveMessage(const string& message) {
     Message finalMessage;
     string delimiter = "||";
     string type = message
@@ -38,11 +39,12 @@ Message MessagesHandler::retrieveMessage(string message) {
     string answer = message
             .substr(message.find(delimiter) + 2, message.length());
     finalMessage.message = message;
-    for (auto possibleType : sendMessageTypeValueMap) {
+    for (const auto& possibleType : sendMessageTypeValueMap) {
         if (type == possibleType.second) {
             finalMessage.type = possibleType.first;
         }
     }
+    printf("Received %o message: %s \n",finalMessage.type, finalMessage.message.c_str());
     return finalMessage;
 }
 

@@ -60,11 +60,11 @@ public:
 
     bool guessWord(const string &word);
 
-    void resendResponse(const string &question, string response);
+    void resendResponse(const string &question, const string& response);
 
     void askQuestion(string question);
 
-    void endGameIfNoOneGuessedAnswer();
+   void endGameIfNoOneGuessedAnswer();
 
     void searchForAlivePlayers();
 

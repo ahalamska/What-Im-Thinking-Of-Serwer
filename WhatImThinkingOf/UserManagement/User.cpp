@@ -12,10 +12,6 @@ int User::getSocketFd() const {
     return socketFd;
 }
 
-
-
-
-
 void User::askQuestion() {
     askForQuestion();
     while (question.empty()) {
@@ -26,21 +22,26 @@ void User::askQuestion() {
 }
 
 void User::runReadingAnswers() {
+    cout<<"Run user B loop \n";
     Message message;
     while (life != 0) {
+        cout<<"Waiting for message : User B -> "<< socketFd << endl;
         message = MessagesHandler::getInstance().readMessage(socketFd);
         switch(message.type){
             case GUESS:
+                cout<<"Received guess form "<< name << endl;
                 guessWord(message.message);
                 break;
             case QUESTION:
+                cout<<"Received question form "<< name << endl;
                 saveQuestion(question);
                 break;
             case CLOSE:
-                GameManager::getInstance().removeUserA();
+                GameManager::getInstance().removeUser(*this);
                 break;
             case NAME:
                 name = message.message;
+                cout<<"Added name for user B "<< name << endl;
                 break;
         }
     }
