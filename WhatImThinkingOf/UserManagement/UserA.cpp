@@ -23,6 +23,7 @@ string UserA::waitForWord() {
 }
 
 void UserA::askQuestion(const string& question) {
+    cout<<"Asking question : "<< question << endl;
     MessagesHandler::getInstance().sendMessage(socketFd, question, QUESTION);
 }
 

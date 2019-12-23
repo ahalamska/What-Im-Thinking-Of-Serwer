@@ -60,6 +60,8 @@ public:
     void win();
 
     void loose();
+
+    const string &getName() const;
 };
 
 

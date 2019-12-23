@@ -19,14 +19,18 @@ void MessagesHandler::sendMessage(int receiverFd, const string &message, Message
 }
 
 Message MessagesHandler::readMessage(int fd) {
-    printf("Waiting for message\n");
     string sentence;
     int count;
     do {
         char buf[255];
         count = read(fd, buf, 255);
+        if(count == -1){
+            Message msg;
+            msg.type = CLOSE;
+            msg.message = "Reading exception";
+            return msg;
+        }
         sentence += buf;
-        printf("Received %d bytes: %s \n", count, sentence.c_str());
     } while (count == 255);
     return retrieveMessage(sentence);
 }
@@ -36,15 +40,15 @@ Message MessagesHandler::retrieveMessage(const string& message) {
     string delimiter = "||";
     string type = message
             .substr(0, message.find(delimiter) + 2);
-    string answer = message
+    string msg = message
             .substr(message.find(delimiter) + 2, message.length());
-    finalMessage.message = message;
+    finalMessage.message = msg;
     for (const auto& possibleType : sendMessageTypeValueMap) {
         if (type == possibleType.second) {
             finalMessage.type = possibleType.first;
         }
     }
-    printf("Received %o message: %s \n",finalMessage.type, finalMessage.message.c_str());
+    printf("Received %s message: %s \n",getValue(finalMessage.type).c_str(), finalMessage.message.c_str());
     return finalMessage;
 }
 

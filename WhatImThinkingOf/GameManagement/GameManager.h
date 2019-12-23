@@ -62,7 +62,7 @@ public:
 
     void resendResponse(const string &question, const string& response);
 
-    void askQuestion(string question);
+    void askQuestion(const string& question);
 
    void endGameIfNoOneGuessedAnswer();
 

@@ -4,6 +4,9 @@
 
 #include "User.h"
 
+const string &User::getName() const {
+    return name;
+}
 
 User::User(int socket, in_addr ip) : socketFd(socket), ip(ip), life(BEGINNING_NUMBER_OF_LIFE) {}
 
@@ -13,9 +16,12 @@ int User::getSocketFd() const {
 }
 
 void User::askQuestion() {
-    askForQuestion();
-    while (question.empty()) {
-        sleep(5);
+    if(question.empty()){
+        askForQuestion();
+        while (question.empty()) {
+            askForQuestion();
+            sleep(10);
+        }
     }
     GameManager::getInstance().askQuestion(question);
     this->question = "";
@@ -34,7 +40,7 @@ void User::runReadingAnswers() {
                 break;
             case QUESTION:
                 cout<<"Received question form "<< name << endl;
-                saveQuestion(question);
+                saveQuestion(message.message);
                 break;
             case CLOSE:
                 GameManager::getInstance().removeUser(*this);
@@ -49,7 +55,7 @@ void User::runReadingAnswers() {
 
 
 void User::saveQuestion(string question){
-    if (question.empty()) {
+    if (this->question.empty()) {
         this->question = question;
     }
 }

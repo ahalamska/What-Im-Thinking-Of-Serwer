@@ -47,9 +47,11 @@ void GameManager::endGameWhenUserALeft() {
 }
 
 void GameManager::questionsLoop() {
+    cout<<"Started question Loop"<<endl;
     while(true){
         for (auto& user : this->users) {
-            if(user.second->getLife() != 0){
+            if(user.second->getLife() != 0 && !user.second->getName().empty()){
+                cout<<"User "<< user.second->getName()<<" turn!"<<endl;
                 user.second->askQuestion();
             }
         }
@@ -156,8 +158,8 @@ void GameManager::addAnswer(const string& question, string answer) {
     this->questionsAnswers[question] = std::move(answer);
 }
 
-void GameManager::askQuestion(string question) {
-    userA->askQuestion(std::move(question));
+void GameManager::askQuestion(const string& question) {
+    userA->askQuestion(question);
 }
 
 
