@@ -80,8 +80,7 @@ void acceptNewClients() {
         // accept new connection
         auto clientFd = accept(addingUsersFd, (sockaddr *) &clientAddr, &clientAddrSize);
         if (clientFd == -1) error(1, errno, "Accepting connection failed");
-        User user(clientFd, clientAddr.sin_addr);
-        User *userRef = &user;
+        User *userRef = new User(clientFd, clientAddr.sin_addr);
         thread([userRef]() {
             GameManager::getInstance().addUser(*userRef);
         }).detach();

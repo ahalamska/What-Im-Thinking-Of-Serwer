@@ -20,7 +20,7 @@ void User::askQuestion() {
         askForQuestion();
         while (question.empty()) {
             askForQuestion();
-            sleep(10);
+            sleep(5);
         }
     }
     GameManager::getInstance().askQuestion(question);

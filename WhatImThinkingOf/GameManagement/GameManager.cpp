@@ -13,8 +13,8 @@ using namespace std;
 
 void GameManager::createGame() {
     cout<<"Creating new game... "<< endl;
-    if(word.empty()){
-        userA->createWord();
+    while(word.empty()){
+        sleep(1);
     }
     thread questionThread([](){
         GameManager::getInstance().questionsLoop();
@@ -50,11 +50,13 @@ void GameManager::questionsLoop() {
     cout<<"Started question Loop"<<endl;
     while(true){
         for (auto& user : this->users) {
+            cout<<"User "<< user.second->getName()<<" with life: "<< user.second->getLife()<<" turn!"<<endl;
             if(user.second->getLife() != 0 && !user.second->getName().empty()){
-                cout<<"User "<< user.second->getName()<<" turn!"<<endl;
                 this->userA->setAnswered(false);
                 user.second->askQuestion();
                 waitForAnswer();
+            } else{
+                sleep(1);
             }
         }
     }
@@ -77,10 +79,6 @@ void GameManager::setWord(const string& word) {
     if(this->word.empty()) {
         this->word = word;
     }
-}
-
-map<int, User*> GameManager::getUsers(){
-    return this->users;
 }
 
 void GameManager::addUserA(UserA &userA) {
@@ -120,7 +118,9 @@ void GameManager::removeUser(User& user){
     close(user.getSocketFd());
     {
         unique_lock<mutex> lock(clientFdsLock);
+        User* userToDelete = this->users[user.getSocketFd()];
         this->users.erase(user.getSocketFd());
+        delete userToDelete;
     }
 }
 
@@ -162,7 +162,7 @@ void GameManager::askQuestion(const string& question) {
 
 void GameManager::waitForAnswer() {
     while(!userA->isAnswered()){
-        sleep(10);
+        sleep(1);
     }
 }
 

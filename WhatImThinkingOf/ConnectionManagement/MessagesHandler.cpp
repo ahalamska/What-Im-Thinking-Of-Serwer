@@ -3,6 +3,8 @@
 //
 
 #include "MessagesHandler.h"
+
+string END_OF_SENTENCE = "//";
 using namespace std;
 
 
@@ -15,24 +17,17 @@ void MessagesHandler::sendMessage(int receiverFd, const string &message, Message
     char* data = finalMessage.data();
     printf("Sending message: %s\n", data);
     send(receiverFd, data, finalMessage.size(), MSG_WAITALL);
-    cout<<"Message sent successfully"<<endl;
 }
 
 void MessagesHandler::sendManyQuestions(int fd, const map<std::string, std::string>& questionsAnswers) {
-    string finalMessage = getValue(QA);
     for (auto& question : questionsAnswers) {
-        finalMessage += question.first + "->" + question.second + "//";
-        printf("question %s -> %s", question.first.c_str(), question.second.c_str());
+        sendMessage(fd, question.first + "->" + question.second, QA);
     }
-    char* data = finalMessage.data();
-    printf("Sending message: %s\n end", data);
-    send(fd, data, finalMessage.size(), MSG_WAITALL);
-    cout<<"Message sent successfully"<<endl;
 }
 
 
 Message MessagesHandler::readMessage(int fd) {
-    string sentence;
+    string message;
     int count;
     do {
         char buf[255];
@@ -43,19 +38,19 @@ Message MessagesHandler::readMessage(int fd) {
             msg.message = "Reading exception";
             return msg;
         }
-        sentence += buf;
+        message += buf;
     } while (count == 255);
-    return retrieveMessage(sentence);
+    return retrieveMessage(message);
 }
 
 Message MessagesHandler::retrieveMessage(const string& message) {
     Message finalMessage;
     string delimiterType = "||";
-    string delimiterSentence = "//";
     string type = message
             .substr(0, message.find(delimiterType) + 2);
+    int nr = message.find(END_OF_SENTENCE) - (message.find(delimiterType) + 2);
     string msg = message
-            .substr(message.find(delimiterType) + 2, message.find(delimiterSentence));
+            .substr(message.find(delimiterType) + 2, nr);
     finalMessage.message = msg;
     for (const auto& possibleType : sendMessageTypeValueMap) {
         if (type == possibleType.second) {
