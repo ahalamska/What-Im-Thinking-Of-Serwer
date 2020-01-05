@@ -35,7 +35,7 @@ void UserA::runReadingAnswers() {
         switch(message.type){
             case QA:
                 cout<<"Received answer : " << message.message << endl;
-                sendAnswer(message);
+                resendAnswer(message.message);
                 break;
             case CLOSE:
                 GameManager::getInstance().removeUserA();
@@ -57,11 +57,20 @@ int UserA::getSocketFd() {
     return socketFd;
 }
 
-void UserA::sendAnswer(const Message& message) {
+void UserA::resendAnswer(const basic_string<char>& message) {
+    this->answered = true;
     string delimiter = "->";
-    string question = message.message
-            .substr(0, message.message.find(delimiter));
-    string answer = message.message
-            .substr(message.message.find(delimiter) + delimiter.length(), message.message.length());
-    GameManager::getInstance().addAnswer(question, answer);
+    string question = message
+            .substr(0, message.find(delimiter));
+    string answer = message
+            .substr(message.find(delimiter) + delimiter.length(), message.length());
+    GameManager::getInstance().saveAnswer(question, answer);
+}
+
+void UserA::setAnswered(bool answered) {
+    UserA::answered = answered;
+}
+
+bool UserA::isAnswered() const {
+    return answered;
 }

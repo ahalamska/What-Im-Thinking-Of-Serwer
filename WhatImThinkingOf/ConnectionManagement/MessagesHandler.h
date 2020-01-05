@@ -39,6 +39,8 @@ public :
 
     Message readMessage(int fd);
 
+    void sendManyQuestions(int i, const map<std::string, std::string>& map);
+
     void sendMessage(int receiverFd, const string &message, MessageType type);
 
     string getValue(MessageType type);

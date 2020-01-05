@@ -14,9 +14,22 @@ void MessagesHandler::sendMessage(int receiverFd, const string &message, Message
     string finalMessage = getValue(type) + message + "//\r";
     char* data = finalMessage.data();
     printf("Sending message: %s\n", data);
-    send(receiverFd, data, finalMessage.size(), MSG_DONTWAIT);
+    send(receiverFd, data, finalMessage.size(), MSG_WAITALL);
     cout<<"Message sent successfully"<<endl;
 }
+
+void MessagesHandler::sendManyQuestions(int fd, const map<std::string, std::string>& questionsAnswers) {
+    string finalMessage = getValue(QA);
+    for (auto& question : questionsAnswers) {
+        finalMessage += question.first + "->" + question.second + "//";
+        printf("question %s -> %s", question.first.c_str(), question.second.c_str());
+    }
+    char* data = finalMessage.data();
+    printf("Sending message: %s\n end", data);
+    send(fd, data, finalMessage.size(), MSG_WAITALL);
+    cout<<"Message sent successfully"<<endl;
+}
+
 
 Message MessagesHandler::readMessage(int fd) {
     string sentence;
@@ -37,11 +50,12 @@ Message MessagesHandler::readMessage(int fd) {
 
 Message MessagesHandler::retrieveMessage(const string& message) {
     Message finalMessage;
-    string delimiter = "||";
+    string delimiterType = "||";
+    string delimiterSentence = "//";
     string type = message
-            .substr(0, message.find(delimiter) + 2);
+            .substr(0, message.find(delimiterType) + 2);
     string msg = message
-            .substr(message.find(delimiter) + 2, message.length());
+            .substr(message.find(delimiterType) + 2, message.find(delimiterSentence));
     finalMessage.message = msg;
     for (const auto& possibleType : sendMessageTypeValueMap) {
         if (type == possibleType.second) {
@@ -68,3 +82,5 @@ MessagesHandler::MessagesHandler() {
     sendMessageTypeValueMap[NAME] = "N||";
     sendMessageTypeValueMap[GUESS] = "G||";
 }
+
+

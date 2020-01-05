@@ -80,17 +80,14 @@ void acceptNewClients() {
         // accept new connection
         auto clientFd = accept(addingUsersFd, (sockaddr *) &clientAddr, &clientAddrSize);
         if (clientFd == -1) error(1, errno, "Accepting connection failed");
-
         User user(clientFd, clientAddr.sin_addr);
-
-        User* userRef = &user;
-        thread userAdd([userRef](){
-            GameManager::getInstance().addUser(*userRef);;
-        });
+        User *userRef = &user;
+        thread([userRef]() {
+            GameManager::getInstance().addUser(*userRef);
+        }).detach();
         // tell who has connected
         printf("New connection from: %s:%hu (fd: %d) \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port),
                clientFd);
-        userAdd.join();
     }
 }
 

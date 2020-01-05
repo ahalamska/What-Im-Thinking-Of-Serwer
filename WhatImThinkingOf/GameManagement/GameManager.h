@@ -44,7 +44,7 @@ private:
 
 public:
 
-    void addAnswer(const string& answer, string basicString);
+    void saveAnswer(const string& answer, const string& basicString);
     void setWord(const string &word);
 
     void addUser(User& user);
@@ -82,6 +82,7 @@ public:
 
     void endGame(int winnerFd, in_addr ip);
 
+    void waitForAnswer();
 };
 
 

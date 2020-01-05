@@ -52,7 +52,9 @@ void GameManager::questionsLoop() {
         for (auto& user : this->users) {
             if(user.second->getLife() != 0 && !user.second->getName().empty()){
                 cout<<"User "<< user.second->getName()<<" turn!"<<endl;
+                this->userA->setAnswered(false);
                 user.second->askQuestion();
+                waitForAnswer();
             }
         }
     }
@@ -103,11 +105,13 @@ void GameManager::addUser(User& user) {
     MessagesHandler::getInstance().sendMessage(user.getSocketFd(), "", USER_B);
     if(users.size() == 1){
         createGame();
-    } else{
+    } else {
+        while(user.getName().empty()){
+            sleep(1);
+        }
         addUserToAlreadyBeganGame(user);
     }
     userThread.join();
-
 }
 
 void GameManager::removeUser(User& user){
@@ -139,27 +143,27 @@ void GameManager::searchForAlivePlayers() {
 }
 
 void GameManager::addUserToAlreadyBeganGame(const User &user) {
-    thread userThread((User()));
-    userThread.join();
     sendPreviousQuestions(user.getSocketFd());
 }
 
 void GameManager::sendPreviousQuestions(int fd) {
-    string sentence;
-    for (auto& question : questionsAnswers) {
-        sentence = question.first + "->" + question.second;
-        MessagesHandler::getInstance().sendMessage(fd, sentence, QA);
-    }
-    MessagesHandler::getInstance().sendMessage(fd, "", QA_END);
-
+    MessagesHandler::getInstance().sendManyQuestions(fd, questionsAnswers);
 }
 
-void GameManager::addAnswer(const string& question, string answer) {
-    this->questionsAnswers[question] = std::move(answer);
+void GameManager::saveAnswer(const string& question, const string& answer) {
+    this->questionsAnswers[question] = answer;
+    this->resendResponse(question, answer);
+
 }
 
 void GameManager::askQuestion(const string& question) {
     userA->askQuestion(question);
+}
+
+void GameManager::waitForAnswer() {
+    while(!userA->isAnswered()){
+        sleep(10);
+    }
 }
 
 

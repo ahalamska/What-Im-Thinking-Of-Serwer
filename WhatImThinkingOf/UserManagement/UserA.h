@@ -22,6 +22,9 @@ private:
     int socketFd;
     in_addr ip;
     string name;
+    bool answered = true;
+public:
+    void setAnswered(bool answered);
 
 
 public:
@@ -39,11 +42,13 @@ public:
 
     void askQuestion(const string& question);
 
-    void sendAnswer(const Message& message);
+    void resendAnswer(const basic_string<char>& message);
 
     void win();
 
     void loose();
+
+    bool isAnswered() const;
 };
 
 
