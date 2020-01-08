@@ -30,8 +30,12 @@ void configureSocket();
 void acceptGamerA();
 
 int main(int argc, char **argv) {
+    thread gamesThread([]() {
+        GameManager::getInstance().gamesLoop();
+    });
     startListening();
-
+    cout<<"Ended listening"<<endl;
+    gamesThread.join();
 }
 
 

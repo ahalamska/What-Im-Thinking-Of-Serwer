@@ -89,7 +89,10 @@ void User::guessWord(string word) {
         GameManager::getInstance().searchForAlivePlayers();
     } else {
         GameManager::getInstance().resendGoodGuess(word, socketFd);
-        GameManager::getInstance().endGame(this->socketFd);
+        GameManager::getInstance().setWinnerFd(socketFd);
+        GameManager::getInstance().setGameRunning(false);
+        questionLoop.lock();
+        questionLoop.unlock();
     }
 }
 

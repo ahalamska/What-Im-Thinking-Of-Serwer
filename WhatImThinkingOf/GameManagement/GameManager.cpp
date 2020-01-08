@@ -10,8 +10,30 @@
 using namespace std;
 
 
+void GameManager::gamesLoop() {
+    gameStart.lock();
+
+    if(this->users.empty()){
+        gameStart.lock();
+    }
+    createGame();
+    cout<<"Ended first game!"<<endl;
+    while (true){
+        while(this->users.empty()){
+            gameStart.lock();
+        }
+        if(winnerFd!=0){
+            cout<<"winner : "<<winnerFd<<endl;
+            endGame(winnerFd);
+            createGame();
+        }
+    }
+}
+
+
 void GameManager::createGame() {
     cout << "Creating new game... " << endl;
+    winnerFd = 0;
     while (word.empty()) {
         sleep(1);
     }
@@ -33,13 +55,8 @@ void GameManager::endGameIfNoOneGuessedAnswer() {
 
 void GameManager::endGame(int winnerFd) {
     cout << "Ending Game UserB : " << this->users[winnerFd]->getName() << " won!" << endl;
-    gameRunning = false;
-    questionLoop.lock();
-    questionLoop.unlock();
-    cout << "Question loop finished existence" << endl;
     this->word = "";
     this->questionsAnswers.clear();
-
     changeUserAtoUserB(winnerFd);
 }
 
@@ -53,8 +70,7 @@ void GameManager::changeWinnerToUserA(int winnerFd) {
     User* winner = this->users[winnerFd];
     winner->setType(USER_A_TYPE);
     this->userA = winner;
-    //this->users.erase(winnerFd);
-    createGame();
+    this->users.erase(winnerFd);
 }
 
 /*void GameManager::endGameWhenUserALeft() {
@@ -157,14 +173,13 @@ void GameManager::addUser(User* user) {
     MessagesHandler::getInstance().sendMessage(user->getSocketFd(), "", USER_B);
 
     if (users.size() == 1) {
-        createGame();
+        gameStart.unlock();
     } else {
         while (user->getName().empty()) {
             sleep(1);
         }
         addUserToAlreadyBeganGame(user);
     }
-    cout<<"Ended game in add User Function"<<endl;
     userThread.join();
     cout<<"Ended add function XD "<<endl;
 
@@ -242,3 +257,12 @@ bool GameManager::isGameRunning() const {
 map<int, User *> GameManager::getUsers() const {
     return users;
 }
+
+void GameManager::setWinnerFd(int winnerFd) {
+    GameManager::winnerFd = winnerFd;
+}
+
+void GameManager::setGameRunning(bool gameRunning) {
+    GameManager::gameRunning = gameRunning;
+}
+

@@ -12,6 +12,9 @@
 using namespace std;
 static condition_variable CV;
 static mutex clientFdsLock;
+static mutex gameStart;
+static mutex questionLoop;
+
 
 // forward declaration
 class User;
@@ -30,10 +33,6 @@ public:
 private:
     string word;
 
-    mutex questionLoop;
-
-    condition_variable questionLoopRunning;
-
     User* userA;
 
     map<string, string> questionsAnswers;
@@ -42,9 +41,20 @@ private:
 
     GameManager(){}
 
-    bool gameRunning;
+public:
+    void setGameRunning(bool gameRunning);
 
 public:
+    void setWinnerFd(int winnerFd);
+
+private:
+    bool gameRunning;
+
+    int winnerFd = 0;
+
+public:
+
+    void gamesLoop();
     bool isGameRunning() const;
 
     void saveAnswer(const string& answer, const string& basicString);
