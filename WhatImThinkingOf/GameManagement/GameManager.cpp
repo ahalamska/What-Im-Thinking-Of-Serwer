@@ -3,7 +3,6 @@
 //
 
 #include <thread>
-#include <functional>
 #include <sys/unistd.h>
 #include "GameManager.h"
 
@@ -13,17 +12,21 @@ using namespace std;
 void GameManager::gamesLoop() {
     gameStart.lock();
 
-    if(this->users.empty()){
+    if (this->users.empty()) {
         gameStart.lock();
     }
     createGame();
-    cout<<"Ended first game!"<<endl;
-    while (true){
-        while(this->users.empty()){
+    cout << "Ended first game!" << endl;
+    while (true) {
+        while (this->users.empty()) {
             gameStart.lock();
         }
-        if(winnerFd!=0){
-            cout<<"winner : "<<winnerFd<<endl;
+        if (winnerFd == userA->getSocketFd()) {
+            cout << "winner : " << winnerFd << endl;
+            endGameIfNoOneGuessedAnswer();
+            createGame();
+        } else if (winnerFd != 0) {
+            cout << "winner : " << winnerFd << endl;
             endGame(winnerFd);
             createGame();
         }
@@ -45,12 +48,10 @@ void GameManager::createGame() {
 }
 
 void GameManager::endGameIfNoOneGuessedAnswer() {
-    gameRunning = false;
-    questionLoop.lock();
-    questionLoop.unlock();
+    cout << "Ending game UserA won!" << endl;
     this->word = "";
     this->questionsAnswers.clear();
-    createGame();
+    resendThatUserAWon();
 }
 
 void GameManager::endGame(int winnerFd) {
@@ -67,7 +68,7 @@ void GameManager::changeUserAtoUserB(int winnerFd) {
 }
 
 void GameManager::changeWinnerToUserA(int winnerFd) {
-    User* winner = this->users[winnerFd];
+    User *winner = this->users[winnerFd];
     winner->setType(USER_A_TYPE);
     this->userA = winner;
     this->users.erase(winnerFd);
@@ -94,7 +95,7 @@ void GameManager::questionsLoop() {
     while (gameRunning) {
         for (auto &user : this->users) {
             cout << "UserB " << user.second->getName() << " with life: " << user.second->getLife() << " turn!" << endl;
-            if (user.second->getLife() != 0 && !user.second->getName().empty()) {
+            if (user.second->getLife() > 0 && !user.second->getName().empty()) {
                 this->userA->setAnswered(false);
                 user.second->askQuestion();
                 waitForAnswer();
@@ -108,7 +109,11 @@ void GameManager::questionsLoop() {
 }
 
 bool GameManager::guessWord(const string &word) {
-    return this->word == word;
+    locale loc;
+    string lowerWord;
+    for (char i : word)
+       lowerWord += tolower(i,loc);
+    return this->word == lowerWord;
 }
 
 void GameManager::resendResponse(const string &question, const string &response) {
@@ -120,12 +125,15 @@ void GameManager::resendResponse(const string &question, const string &response)
     }
 }
 
-void GameManager::resendWrongGuess(const string &guess) {
+void GameManager::resendWrongGuess(const string &guess, int guesserFd) {
     this->questionsAnswers[guess] = "false";
     string sentence = guess + "->false";
     for (auto user : users) {
         int fd = user.first;
-        MessagesHandler::getInstance().sendMessage(fd, sentence, WRONG_GUESS);
+        if (fd == guesserFd) {
+            MessagesHandler::getInstance().sendMessage(fd, sentence, WRONG_GUESS);
+        }
+        MessagesHandler::getInstance().sendMessage(fd, sentence, QA);
     }
 }
 
@@ -139,17 +147,29 @@ void GameManager::resendGoodGuess(const string &guess, int winnerFd) {
         } else {
             MessagesHandler::getInstance().sendMessage(fd, sentence, LOOSE);
         }
-        MessagesHandler::getInstance().sendMessage(this->userA->getSocketFd(), sentence, LOOSE);
     }
+    MessagesHandler::getInstance().sendMessage(this->userA->getSocketFd(), sentence, LOOSE);
+}
+
+void GameManager::resendThatUserAWon() {
+    for (auto user : users) {
+        int fd = user.first;
+        MessagesHandler::getInstance().sendMessage(fd, "", LOOSE);
+    }
+    MessagesHandler::getInstance().sendMessage(this->userA->getSocketFd(), "", WIN);
 }
 
 void GameManager::setWord(const string &word) {
     if (this->word.empty()) {
-        this->word = word;
+        locale loc;
+        string lowerWord;
+        for (char i : word)
+            lowerWord += tolower(i,loc);
+        this->word = lowerWord;
     }
 }
 
-void GameManager::addUserA(User* userA) {
+void GameManager::addUserA(User *userA) {
     printf("Adding user A\n");
     this->userA = userA;
     User *userARef = this->userA;
@@ -161,7 +181,7 @@ void GameManager::addUserA(User* userA) {
     userAThread.join();
 }
 
-void GameManager::addUser(User* user) {
+void GameManager::addUser(User *user) {
     printf("Adding user B\n");
     users[user->getSocketFd()] = user;
 
@@ -181,7 +201,7 @@ void GameManager::addUser(User* user) {
         addUserToAlreadyBeganGame(user);
     }
     userThread.join();
-    cout<<"Ended add function XD "<<endl;
+    cout << "Ended add function XD " << endl;
 
 }
 
@@ -215,10 +235,15 @@ void GameManager::searchForAlivePlayers() {
     for (auto &user : this->users) {
         if (user.second->getLife() > 0) return;
     }
+    cout << "Haven't found alive players" << endl;
+    gameRunning = false;
+    setWinnerFd(userA->getSocketFd());
+    questionLoop.lock();
+    questionLoop.unlock();
     endGameIfNoOneGuessedAnswer();
 }
 
-void GameManager::addUserToAlreadyBeganGame(User* user) {
+void GameManager::addUserToAlreadyBeganGame(User *user) {
     sendPreviousQuestions(user->getSocketFd());
 }
 
@@ -265,4 +290,6 @@ void GameManager::setWinnerFd(int winnerFd) {
 void GameManager::setGameRunning(bool gameRunning) {
     GameManager::gameRunning = gameRunning;
 }
+
+
 

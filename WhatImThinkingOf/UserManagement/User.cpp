@@ -82,9 +82,12 @@ void User::askQuestion() {
 }
 
 void User::guessWord(string word) {
+    if(GameManager::getInstance().guessWord("")){
+        return;
+    }
     bool response = GameManager::getInstance().guessWord(word);
     if (!response) {
-        GameManager::getInstance().resendWrongGuess(word);
+        GameManager::getInstance().resendWrongGuess(word, socketFd);
         this->life--;
         GameManager::getInstance().searchForAlivePlayers();
     } else {

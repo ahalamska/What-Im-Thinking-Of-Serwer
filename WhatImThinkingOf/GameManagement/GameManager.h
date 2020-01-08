@@ -97,7 +97,7 @@ public:
 
     void waitForAnswer();
 
-    void resendWrongGuess(const string &guess);
+    void resendWrongGuess(const string &guess, int fd);
 
     void resendGoodGuess(const string &guess, int fd);
 
@@ -109,6 +109,7 @@ public:
 
     map<int, User *> getUsers() const;
 
+    void resendThatUserAWon();
 };
 
 
