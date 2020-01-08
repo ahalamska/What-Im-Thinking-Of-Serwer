@@ -2,6 +2,7 @@
 // Created by Alicja Halamska on 15.12.2019.
 //
 
+#include <sys/unistd.h>
 #include "MessagesHandler.h"
 
 string END_OF_SENTENCE = "//";
@@ -24,7 +25,6 @@ void MessagesHandler::sendManyQuestions(int fd, const map<std::string, std::stri
         sendMessage(fd, question.first + "->" + question.second, QA);
     }
 }
-
 
 Message MessagesHandler::readMessage(int fd) {
     string message;

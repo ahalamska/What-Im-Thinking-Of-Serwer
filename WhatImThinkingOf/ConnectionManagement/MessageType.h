@@ -19,5 +19,6 @@ enum MessageType{
     CLOSE,
     GUESS,
     NAME,
+    EMPTY
 };
 #endif //SK2_MESSAGETYPE_H

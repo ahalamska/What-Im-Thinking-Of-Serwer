@@ -11,6 +11,7 @@
 #include "../GameManagement/GameManager.h"
 
 
+
 using namespace std;
 
 char *PORT = "8081";
@@ -80,9 +81,9 @@ void acceptNewClients() {
         // accept new connection
         auto clientFd = accept(addingUsersFd, (sockaddr *) &clientAddr, &clientAddrSize);
         if (clientFd == -1) error(1, errno, "Accepting connection failed");
-        User *userRef = new User(clientFd, clientAddr.sin_addr);
+        User *userRef = new User(clientFd, clientAddr.sin_addr, "", USER_B_TYPE);
         thread([userRef]() {
-            GameManager::getInstance().addUser(*userRef);
+            GameManager::getInstance().addUser(userRef);
         }).detach();
         // tell who has connected
         printf("New connection from: %s:%hu (fd: %d) \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port),
@@ -98,13 +99,12 @@ void acceptGamerA() {
     // accept new connection
     auto clientFd = accept(addingUsersFd, (sockaddr *) &clientAddr, &clientAddrSize);
     if (clientFd == -1) error(1, errno, "Accepting connection failed");
-    printf("User A connected from: %s:%hu (fd: %d) \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port),
+    printf("UserB A connected from: %s:%hu (fd: %d) \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port),
            clientFd);
-    UserA userA(clientFd, clientAddr.sin_addr);
+    User* userA = new User(clientFd, clientAddr.sin_addr, "", USER_A_TYPE);
 
-    UserA *userARef = &userA;
-    thread addingUserAThread([userARef]() {
-        GameManager::getInstance().addUserA(*userARef);;
+    thread addingUserAThread([userA]() {
+        GameManager::getInstance().addUserA(userA);
     });
     acceptNewClients();
     addingUserAThread.join();

@@ -3,168 +3,242 @@
 //
 
 #include <thread>
-#include <utility>
 #include <functional>
+#include <sys/unistd.h>
 #include "GameManager.h"
-#include "../UserManagement/User.h"
+
 using namespace std;
 
 
-
 void GameManager::createGame() {
-    cout<<"Creating new game... "<< endl;
-    while(word.empty()){
+    cout << "Creating new game... " << endl;
+    while (word.empty()) {
         sleep(1);
     }
-    thread questionThread([](){
+    gameRunning = true;
+    thread questionThreadLoc([]() {
         GameManager::getInstance().questionsLoop();
     });
-    questionThread.join();
+    questionThreadLoc.join();
 }
 
-void GameManager::endGameIfNoOneGuessedAnswer(){
+void GameManager::endGameIfNoOneGuessedAnswer() {
+    gameRunning = false;
+    questionLoop.lock();
+    questionLoop.unlock();
     this->word = "";
     this->questionsAnswers.clear();
     createGame();
 }
 
-void GameManager::endGame(int winnerFd, in_addr ip){
+void GameManager::endGame(int winnerFd) {
+    cout << "Ending Game UserB : " << this->users[winnerFd]->getName() << " won!" << endl;
+    gameRunning = false;
+    questionLoop.lock();
+    questionLoop.unlock();
+    cout << "Question loop finished existence" << endl;
     this->word = "";
-    UserA userA1 = UserA(winnerFd, ip);
-    this->userA = &userA1;
     this->questionsAnswers.clear();
+
+    changeUserAtoUserB(winnerFd);
+}
+
+void GameManager::changeUserAtoUserB(int winnerFd) {
+    userA->setType(USER_B_TYPE);
+    users[userA->getSocketFd()] = userA;
+    changeWinnerToUserA(winnerFd);
+}
+
+void GameManager::changeWinnerToUserA(int winnerFd) {
+    User* winner = this->users[winnerFd];
+    winner->setType(USER_A_TYPE);
+    this->userA = winner;
+    //this->users.erase(winnerFd);
     createGame();
 }
 
-void GameManager::endGameWhenUserALeft() {
+/*void GameManager::endGameWhenUserALeft() {
+    gameRunning = false;
+    questionLoop.lock();
+    questionLoop.unlock();
+
     this->word = "";
     auto iterator = users.begin();
-    std::advance( iterator, random() % users.size() );
+    std::advance(iterator, random() % users.size());
     UserA userA1 = UserA(iterator->first, iterator->second->getIp());
     this->userA = &userA1;
+    this->users.erase(userA1.getSocketFd());
     this->questionsAnswers.clear();
     createGame();
-}
+}*/
 
 void GameManager::questionsLoop() {
-    cout<<"Started question Loop"<<endl;
-    while(true){
-        for (auto& user : this->users) {
-            cout<<"User "<< user.second->getName()<<" with life: "<< user.second->getLife()<<" turn!"<<endl;
-            if(user.second->getLife() != 0 && !user.second->getName().empty()){
+    cout << "Started question Loop" << endl;
+    questionLoop.lock();
+    while (gameRunning) {
+        for (auto &user : this->users) {
+            cout << "UserB " << user.second->getName() << " with life: " << user.second->getLife() << " turn!" << endl;
+            if (user.second->getLife() != 0 && !user.second->getName().empty()) {
                 this->userA->setAnswered(false);
                 user.second->askQuestion();
                 waitForAnswer();
-            } else{
+            } else {
                 sleep(1);
             }
         }
     }
+    cout << "Finished question loop " << endl;
+    endQuestionLoop();
 }
 
-bool GameManager::guessWord(const string& word) {
-        return this->word == word;
+bool GameManager::guessWord(const string &word) {
+    return this->word == word;
 }
 
-void GameManager::resendResponse(const string& question, const string& response) {
+void GameManager::resendResponse(const string &question, const string &response) {
     this->questionsAnswers[question] = response;
-    string sentence =  question + "->" + response;
-    for(auto user : users){
+    string sentence = question + "->" + response;
+    for (auto user : users) {
         int fd = user.first;
         MessagesHandler::getInstance().sendMessage(fd, sentence, QA);
     }
 }
 
-void GameManager::setWord(const string& word) {
-    if(this->word.empty()) {
+void GameManager::resendWrongGuess(const string &guess) {
+    this->questionsAnswers[guess] = "false";
+    string sentence = guess + "->false";
+    for (auto user : users) {
+        int fd = user.first;
+        MessagesHandler::getInstance().sendMessage(fd, sentence, WRONG_GUESS);
+    }
+}
+
+void GameManager::resendGoodGuess(const string &guess, int winnerFd) {
+    this->questionsAnswers[guess] = "true";
+    string sentence = guess + "->true";
+    for (auto user : users) {
+        int fd = user.first;
+        if (fd == winnerFd) {
+            MessagesHandler::getInstance().sendMessage(winnerFd, sentence, WIN);
+        } else {
+            MessagesHandler::getInstance().sendMessage(fd, sentence, LOOSE);
+        }
+        MessagesHandler::getInstance().sendMessage(this->userA->getSocketFd(), sentence, LOOSE);
+    }
+}
+
+void GameManager::setWord(const string &word) {
+    if (this->word.empty()) {
         this->word = word;
     }
 }
 
-void GameManager::addUserA(UserA &userA) {
+void GameManager::addUserA(User* userA) {
     printf("Adding user A\n");
-    this->userA = &userA;
-    UserA* userARef = this->userA;
-    thread userAThread([userARef](){
+    this->userA = userA;
+    User *userARef = this->userA;
+    thread userAThread([userARef]() {
         userARef->runReadingAnswers();
     });
     printf("Sending information about UserType : User A\n");
-    MessagesHandler::getInstance().sendMessage(userA.getSocketFd(), "", USER_A);
+    MessagesHandler::getInstance().sendMessage(userA->getSocketFd(), "", USER_A);
     userAThread.join();
 }
 
-void GameManager::addUser(User& user) {
+void GameManager::addUser(User* user) {
     printf("Adding user B\n");
-    users[user.getSocketFd()] = &user;
-    User* userRef = &user;
-        thread userThread([userRef](){
-            userRef->runReadingAnswers();
-        });
-    MessagesHandler::getInstance().sendMessage(user.getSocketFd(), "", USER_B);
-    if(users.size() == 1){
+    users[user->getSocketFd()] = user;
+
+    thread userThread([user]() {
+        user->runReadingAnswers();
+    });
+    printf("Sending information about UserType : User B\n");
+
+    MessagesHandler::getInstance().sendMessage(user->getSocketFd(), "", USER_B);
+
+    if (users.size() == 1) {
         createGame();
     } else {
-        while(user.getName().empty()){
+        while (user->getName().empty()) {
             sleep(1);
         }
         addUserToAlreadyBeganGame(user);
     }
+    cout<<"Ended game in add User Function"<<endl;
     userThread.join();
+    cout<<"Ended add function XD "<<endl;
+
 }
 
-void GameManager::removeUser(User& user){
-    printf("removing %d\n", user.getSocketFd());
+void GameManager::removeUser(User &user) {
+    printf("removing user:  %s\n", user.getName().c_str());
+    user.setConnected(false);
     shutdown(user.getSocketFd(), SHUT_RDWR);
     close(user.getSocketFd());
     {
         unique_lock<mutex> lock(clientFdsLock);
-        User* userToDelete = this->users[user.getSocketFd()];
+        User *userToDelete = this->users[user.getSocketFd()];
         this->users.erase(user.getSocketFd());
         delete userToDelete;
     }
 }
 
-void GameManager::removeUserA(){
+void GameManager::removeUserA() {
     printf("removing user A");
+    userA->setConnected(false);
+
     shutdown(userA->getSocketFd(), SHUT_RDWR);
     close(userA->getSocketFd());
     {
         unique_lock<mutex> lock(clientFdsLock);
-        userA->~UserA();
-        endGameWhenUserALeft();
+        userA->~User();
+        //endGameWhenUserALeft();
     }
 }
 
 void GameManager::searchForAlivePlayers() {
-    for (auto& user : this->users) {
-        if(user.second->getLife() > 0) return;
+    for (auto &user : this->users) {
+        if (user.second->getLife() > 0) return;
     }
     endGameIfNoOneGuessedAnswer();
 }
 
-void GameManager::addUserToAlreadyBeganGame(const User &user) {
-    sendPreviousQuestions(user.getSocketFd());
+void GameManager::addUserToAlreadyBeganGame(User* user) {
+    sendPreviousQuestions(user->getSocketFd());
 }
 
 void GameManager::sendPreviousQuestions(int fd) {
     MessagesHandler::getInstance().sendManyQuestions(fd, questionsAnswers);
 }
 
-void GameManager::saveAnswer(const string& question, const string& answer) {
+void GameManager::saveAnswer(const string &question, const string &answer) {
     this->questionsAnswers[question] = answer;
     this->resendResponse(question, answer);
 
 }
 
-void GameManager::askQuestion(const string& question) {
+void GameManager::askQuestion(const string &question) {
     userA->askQuestion(question);
 }
 
 void GameManager::waitForAnswer() {
-    while(!userA->isAnswered()){
+    while (!userA->isAnswered() && userA->isConnected() && GameManager::getInstance().isGameRunning()) {
         sleep(1);
     }
 }
 
+void GameManager::endQuestionLoop() {
+    for (auto user : users) {
+        user.second->resetUser();
+    }
+    this->userA->setAnswered(true);
+    questionLoop.unlock();
+}
 
+bool GameManager::isGameRunning() const {
+    return gameRunning;
+}
 
+map<int, User *> GameManager::getUsers() const {
+    return users;
+}

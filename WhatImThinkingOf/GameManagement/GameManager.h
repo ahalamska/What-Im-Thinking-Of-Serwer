@@ -3,11 +3,11 @@
 
 #include <string>
 #include <map>
+#include <mutex>
 #include <condition_variable>
 #include <thread>
-#include "../UserManagement/User.h"
-#include "../UserManagement/UserA.h"
 #include "../ConnectionManagement/MessagesHandler.h"
+#include "../UserManagement/User.h"
 
 using namespace std;
 static condition_variable CV;
@@ -15,8 +15,6 @@ static mutex clientFdsLock;
 
 // forward declaration
 class User;
-
-class UserA;
 
 class MessagesHandler;
 
@@ -29,12 +27,14 @@ public:
         static GameManager instance;
         return instance;
     }
-
 private:
-
     string word;
 
-    UserA *userA;
+    mutex questionLoop;
+
+    condition_variable questionLoopRunning;
+
+    User* userA;
 
     map<string, string> questionsAnswers;
 
@@ -42,16 +42,21 @@ private:
 
     GameManager(){}
 
+    bool gameRunning;
+
 public:
+    bool isGameRunning() const;
 
     void saveAnswer(const string& answer, const string& basicString);
+
     void setWord(const string &word);
 
-    void addUser(User& user);
+    void addUser(User* user);
 
-    void addUserA(UserA& userA);
+    void addUserA(User* userA);
 
     GameManager(GameManager const&) = delete;
+
     void operator=(GameManager const&)  = delete;
 
     void createGame();
@@ -72,17 +77,28 @@ public:
 
     void endGameWhenUserALeft();
 
-    map<int, User*> getUsers();
-
-    void addUserToAlreadyBeganGame(const User &user);
+    void addUserToAlreadyBeganGame(User* user);
 
     void sendPreviousQuestions(int fd);
 
     void removeUserA();
 
-    void endGame(int winnerFd, in_addr ip);
+    void endGame(int winnerFd);
 
     void waitForAnswer();
+
+    void resendWrongGuess(const string &guess);
+
+    void resendGoodGuess(const string &guess, int fd);
+
+    void endQuestionLoop();
+
+    void changeUserAtoUserB(int i);
+
+    void changeWinnerToUserA(int fd);
+
+    map<int, User *> getUsers() const;
+
 };
 
 
