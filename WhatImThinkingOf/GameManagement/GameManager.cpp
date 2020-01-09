@@ -29,6 +29,10 @@ void GameManager::gamesLoop() {
             cout << "winner : " << winnerFd << endl;
             endGame(winnerFd);
             createGame();
+        } else if (winnerFd == 0) {
+            cout << "user A left game" << endl;
+            endGameWhenUserALeft();
+            createGame();
         }
     }
 }
@@ -74,20 +78,17 @@ void GameManager::changeWinnerToUserA(int winnerFd) {
     this->users.erase(winnerFd);
 }
 
-/*void GameManager::endGameWhenUserALeft() {
-    gameRunning = false;
-    questionLoop.lock();
-    questionLoop.unlock();
 
+void GameManager::endGameWhenUserALeft() {
+    cout << "Ending Game UserA left game " << endl;
     this->word = "";
     auto iterator = users.begin();
     std::advance(iterator, random() % users.size());
-    UserA userA1 = UserA(iterator->first, iterator->second->getIp());
-    this->userA = &userA1;
-    this->users.erase(userA1.getSocketFd());
+    User* newUserA = new User(iterator->first, iterator->second->getIp(), iterator->second->getName(), USER_A_TYPE);
+    this->userA = newUserA;
+    this->users.erase(newUserA->getSocketFd());
     this->questionsAnswers.clear();
-    createGame();
-}*/
+}
 
 void GameManager::questionsLoop() {
     cout << "Started question Loop" << endl;
@@ -112,7 +113,7 @@ bool GameManager::guessWord(const string &word) {
     locale loc;
     string lowerWord;
     for (char i : word)
-       lowerWord += tolower(i,loc);
+        lowerWord += tolower(i, loc);
     return this->word == lowerWord;
 }
 
@@ -164,7 +165,7 @@ void GameManager::setWord(const string &word) {
         locale loc;
         string lowerWord;
         for (char i : word)
-            lowerWord += tolower(i,loc);
+            lowerWord += tolower(i, loc);
         this->word = lowerWord;
     }
 }
@@ -205,17 +206,26 @@ void GameManager::addUser(User *user) {
 
 }
 
-void GameManager::removeUser(User &user) {
-    printf("removing user:  %s\n", user.getName().c_str());
-    user.setConnected(false);
-    shutdown(user.getSocketFd(), SHUT_RDWR);
-    close(user.getSocketFd());
+void GameManager::removeUser(User *user) {
+    printf("removing user:  %s\n", user->getName().c_str());
+    user->setConnected(false);
+    shutdown(user->getSocketFd(), SHUT_RDWR);
+    close(user->getSocketFd());
     {
         unique_lock<mutex> lock(clientFdsLock);
-        User *userToDelete = this->users[user.getSocketFd()];
-        this->users.erase(user.getSocketFd());
-        delete userToDelete;
+        this->users.erase(user->getSocketFd());
+        delete user;
     }
+}
+
+void GameManager::removeUser(int fd) {
+    User *user = users[fd];
+    printf("removing user:  %s\n", user->getName().c_str());
+    user->setConnected(false);
+    shutdown(fd, SHUT_RDWR);
+    close(fd);
+    this->users.erase(fd);
+    delete user;
 }
 
 void GameManager::removeUserA() {
@@ -224,11 +234,11 @@ void GameManager::removeUserA() {
 
     shutdown(userA->getSocketFd(), SHUT_RDWR);
     close(userA->getSocketFd());
-    {
-        unique_lock<mutex> lock(clientFdsLock);
-        userA->~User();
-        //endGameWhenUserALeft();
-    }
+    userA->~User();
+
+    gameRunning = false;
+    questionLoop.lock();
+    questionLoop.unlock();
 }
 
 void GameManager::searchForAlivePlayers() {

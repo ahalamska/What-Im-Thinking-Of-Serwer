@@ -17,7 +17,11 @@ void MessagesHandler::sendMessage(int receiverFd, const string &message, Message
     string finalMessage = getValue(type) + message + "//\r";
     char* data = finalMessage.data();
     printf("Sending message: %s\n", data);
-    send(receiverFd, data, finalMessage.size(), MSG_WAITALL);
+    int count = send(receiverFd, data, finalMessage.size(), MSG_WAITALL);
+    if(count == -1) {
+        GameManager::getInstance().removeUser(receiverFd);
+    }
+
 }
 
 void MessagesHandler::sendManyQuestions(int fd, const map<std::string, std::string>& questionsAnswers) {

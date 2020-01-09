@@ -83,7 +83,7 @@ public:
 
     void searchForAlivePlayers();
 
-    void removeUser(User &user);
+    void removeUser(User *user);
 
     void endGameWhenUserALeft();
 
@@ -110,6 +110,8 @@ public:
     map<int, User *> getUsers() const;
 
     void resendThatUserAWon();
+
+    void removeUser(int fd);
 };
 
 

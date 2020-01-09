@@ -132,15 +132,14 @@ void User::runReadingAnswers() {
                     cout << "Received question form " << name << endl;
                     saveQuestion(message.message);
                     break;
-                case CLOSE:
-                    GameManager::getInstance().removeUser(*this);
-                    break;
                 case NAME:
                     name = message.message;
                     cout << "Added name for user B " << name << endl;
                     break;
                 case EMPTY:
                     break;
+                case CLOSE:
+                    GameManager::getInstance().removeUser(this);
             }
         }
     }
