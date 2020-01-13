@@ -9,6 +9,7 @@
 #include <cygwin/socket.h>
 #include <sys/socket.h>
 #include <iostream>
+#include <list>
 #include "../GameManagement/GameManager.h"
 #include "MessageType.h"
 #include "Message.h"
@@ -21,6 +22,8 @@ class MessagesHandler {
 private:
 
     map<MessageType, string> sendMessageTypeValueMap;
+
+    string incompleteMessage;
 
     MessagesHandler();
 
@@ -35,15 +38,17 @@ public :
     MessagesHandler(MessagesHandler const&) = delete;
     void operator=(MessagesHandler const&)  = delete;
 
-    Message retrieveMessage(const string& message);
+    list<Message> retrieveMessages(list<string> message);
 
-    Message readMessage(int fd);
+    list<Message> readMessage(int fd);
 
     void sendManyQuestions(int i, const map<std::string, std::string>& map);
 
     void sendMessage(int receiverFd, const string &message, MessageType type);
 
     string getValue(MessageType type);
+
+    list<Message> separateMessage(string message);
 };
 
 

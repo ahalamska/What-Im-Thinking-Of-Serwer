@@ -15,54 +15,76 @@ string MessagesHandler::getValue(MessageType type) {
 
 void MessagesHandler::sendMessage(int receiverFd, const string &message, MessageType type) {
     string finalMessage = getValue(type) + message + "//\r";
-    char* data = finalMessage.data();
+    char *data = finalMessage.data();
     printf("Sending message: %s\n", data);
     int count = send(receiverFd, data, finalMessage.size(), MSG_WAITALL);
-    if(count == -1) {
+    if (count == -1) {
         GameManager::getInstance().removeUser(receiverFd);
     }
 
 }
 
-void MessagesHandler::sendManyQuestions(int fd, const map<std::string, std::string>& questionsAnswers) {
-    for (auto& question : questionsAnswers) {
+void MessagesHandler::sendManyQuestions(int fd, const map<std::string, std::string> &questionsAnswers) {
+    for (auto &question : questionsAnswers) {
         sendMessage(fd, question.first + "->" + question.second, QA);
     }
 }
 
-Message MessagesHandler::readMessage(int fd) {
+list<Message> MessagesHandler::readMessage(int fd) {
     string message;
     int count;
-    do {
-        char buf[255];
-        count = read(fd, buf, 255);
-        if(count == -1){
-            Message msg;
-            msg.type = CLOSE;
-            msg.message = "Reading exception";
-            return msg;
-        }
-        message += buf;
-    } while (count == 255);
-    return retrieveMessage(message);
+    char buf[255];
+    count = read(fd, buf, 255);
+    if (count == -1) {
+        Message msg;
+        msg.type = CLOSE;
+        msg.message = "Reading exception";
+        list<Message> ms;
+        ms.insert(ms.end(), msg);
+        return ms;
+    }
+    for (int i = 0; i < count; ++i) {
+        message += buf[i];
+    }
+    return separateMessage(message);
 }
 
-Message MessagesHandler::retrieveMessage(const string& message) {
-    Message finalMessage;
-    string delimiterType = "||";
-    string type = message
-            .substr(0, message.find(delimiterType) + 2);
-    int nr = message.find(END_OF_SENTENCE) - (message.find(delimiterType) + 2);
-    string msg = message
-            .substr(message.find(delimiterType) + 2, nr);
-    finalMessage.message = msg;
-    for (const auto& possibleType : sendMessageTypeValueMap) {
-        if (type == possibleType.second) {
-            finalMessage.type = possibleType.first;
-        }
+list<Message> MessagesHandler::separateMessage(string message) {
+    message = incompleteMessage + message;
+    incompleteMessage = "";
+    list<string> msgList;
+    int pos = message.find(END_OF_SENTENCE);
+    while (pos != string::npos) {
+        msgList.insert(msgList.end(), message.substr(0, pos));
+        message = message.substr(pos + 2, message.size() - pos + 1);
+        pos = message.find(END_OF_SENTENCE);
     }
-    printf("Received %s message: %s \n",getValue(finalMessage.type).c_str(), finalMessage.message.c_str());
-    return finalMessage;
+    if (!message.empty()) {
+        incompleteMessage = message;
+    }
+    return retrieveMessages(msgList);
+}
+
+list<Message> MessagesHandler::retrieveMessages(list<string> messages) {
+    list<Message> finalMessages;
+    for (string message : messages) {
+        Message finalMessage;
+        string delimiterType = "||";
+        string type = message
+                .substr(0, message.find(delimiterType) + 2);
+        int nr = message.size() - (message.find(delimiterType) + 2);
+        string msg = message
+                .substr(message.find(delimiterType) + 2, nr);
+        finalMessage.message = msg;
+        for (const auto &possibleType : sendMessageTypeValueMap) {
+            if (type == possibleType.second) {
+                finalMessage.type = possibleType.first;
+            }
+        }
+        printf("Received %s message: %s \n", getValue(finalMessage.type).c_str(), finalMessage.message.c_str());
+        finalMessages.insert(finalMessages.end(), finalMessage);
+    }
+    return finalMessages;
 }
 
 MessagesHandler::MessagesHandler() {
@@ -81,5 +103,7 @@ MessagesHandler::MessagesHandler() {
     sendMessageTypeValueMap[NAME] = "N||";
     sendMessageTypeValueMap[GUESS] = "G||";
 }
+
+
 
 

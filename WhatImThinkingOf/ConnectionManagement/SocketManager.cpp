@@ -14,7 +14,7 @@
 
 using namespace std;
 
-char *PORT = "8081";
+const char *PORT = "8081";
 int addingUsersFd;
 
 uint16_t readPort(char *txt);
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
 }
 
 
-uint16_t readPort(char *txt) {
+uint16_t readPort(const char *txt) {
     char *ptr;
     auto port = strtol(txt, &ptr, 10);
     if (*ptr != 0 || port < 1 || (port > ((1 << 16) - 1))) error(1, 0, "illegal argument %s", txt);

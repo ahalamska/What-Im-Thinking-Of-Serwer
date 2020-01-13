@@ -51,6 +51,7 @@ User::User(int fd, in_addr ip, string name, string type) {
 }
 
 void User::resendAnswer(const basic_string<char> &message) {
+    if(GameManager::getInstance().guessWord("")) return;
     this->answered = true;
     string delimiter = "->";
     string questionToResend = message
@@ -75,6 +76,7 @@ void User::askQuestion() {
             return;
         }
         askForQuestion();
+        //TODO MUTEX;
         sleep(5);
     }
     GameManager::getInstance().askQuestion(question);
@@ -101,45 +103,47 @@ void User::guessWord(string word) {
 
 void User::runReadingAnswers() {
     cout << "Run user A loop" << endl;
-    Message message;
+    list<Message> messages;
     while (connected) {
-        message = MessagesHandler::getInstance().readMessage(socketFd);
-        if (type == USER_A_TYPE) {
-            switch (message.type) {
-                case QA:
-                    cout << "Received answer : " << message.message << endl;
-                    resendAnswer(message.message);
-                    break;
-                case CLOSE:
-                    GameManager::getInstance().removeUserA();
-                    break;
-                case NAME:
-                    name = message.message;
-                    cout << "Added name for user A: " << name << endl;
-                    break;
-                case NEW_WORD:
-                    cout << "Got new word: " << message.message << endl;
-                    GameManager::getInstance().setWord(message.message);
-                    break;
-            }
-        } else if (type == USER_B_TYPE) {
-            switch (message.type) {
-                case GUESS:
-                    cout << "Received guess form " << name << endl;
-                    guessWord(message.message);
-                    break;
-                case QUESTION:
-                    cout << "Received question form " << name << endl;
-                    saveQuestion(message.message);
-                    break;
-                case NAME:
-                    name = message.message;
-                    cout << "Added name for user B " << name << endl;
-                    break;
-                case EMPTY:
-                    break;
-                case CLOSE:
-                    GameManager::getInstance().removeUser(this);
+        messages = MessagesHandler::getInstance().readMessage(socketFd);
+        for(const Message& message: messages) {
+            if (type == USER_A_TYPE) {
+                switch (message.type) {
+                    case QA:
+                        cout << "Received answer : " << message.message << endl;
+                        resendAnswer(message.message);
+                        break;
+                    case CLOSE:
+                        GameManager::getInstance().removeUserA();
+                        break;
+                    case NAME:
+                        name = message.message;
+                        cout << "Added name for user A: " << name << endl;
+                        break;
+                    case NEW_WORD:
+                        cout << "Got new word: " << message.message << endl;
+                        GameManager::getInstance().setWord(message.message);
+                        break;
+                }
+            } else if (type == USER_B_TYPE) {
+                switch (message.type) {
+                    case GUESS:
+                        cout << "Received guess form " << name << endl;
+                        guessWord(message.message);
+                        break;
+                    case QUESTION:
+                        cout << "Received question form " << name << endl;
+                        saveQuestion(message.message);
+                        break;
+                    case NAME:
+                        name = message.message;
+                        cout << "Added name for user B " << name << endl;
+                        break;
+                    case EMPTY:
+                        break;
+                    case CLOSE:
+                        GameManager::getInstance().removeUser(this);
+                }
             }
         }
     }

@@ -42,6 +42,7 @@ void GameManager::createGame() {
     cout << "Creating new game... " << endl;
     winnerFd = 0;
     while (word.empty()) {
+        //TODO mutex
         sleep(1);
     }
     gameRunning = true;
@@ -84,10 +85,16 @@ void GameManager::endGameWhenUserALeft() {
     this->word = "";
     auto iterator = users.begin();
     std::advance(iterator, random() % users.size());
-    User* newUserA = new User(iterator->first, iterator->second->getIp(), iterator->second->getName(), USER_A_TYPE);
+    User* newUserA = this->users[iterator->first];
+    newUserA->setType(USER_A_TYPE);
     this->userA = newUserA;
     this->users.erase(newUserA->getSocketFd());
     this->questionsAnswers.clear();
+    MessagesHandler::getInstance().sendMessage(userA->getSocketFd(), "UserA left", USER_A);
+    for(auto userB : users) {
+        MessagesHandler::getInstance().sendMessage(userB.second->getSocketFd(), "UserA left", USER_B);
+    }
+
 }
 
 void GameManager::questionsLoop() {
@@ -101,7 +108,8 @@ void GameManager::questionsLoop() {
                 user.second->askQuestion();
                 waitForAnswer();
             } else {
-                sleep(1);
+                //TODO mutex
+                sleep(2);
             }
         }
     }
@@ -173,9 +181,8 @@ void GameManager::setWord(const string &word) {
 void GameManager::addUserA(User *userA) {
     printf("Adding user A\n");
     this->userA = userA;
-    User *userARef = this->userA;
-    thread userAThread([userARef]() {
-        userARef->runReadingAnswers();
+    thread userAThread([userA]() {
+        userA->runReadingAnswers();
     });
     printf("Sending information about UserType : User A\n");
     MessagesHandler::getInstance().sendMessage(userA->getSocketFd(), "", USER_A);
@@ -197,6 +204,7 @@ void GameManager::addUser(User *user) {
         gameStart.unlock();
     } else {
         while (user->getName().empty()) {
+            //TODO mutex
             sleep(1);
         }
         addUserToAlreadyBeganGame(user);
@@ -234,7 +242,7 @@ void GameManager::removeUserA() {
 
     shutdown(userA->getSocketFd(), SHUT_RDWR);
     close(userA->getSocketFd());
-    userA->~User();
+    delete userA;
 
     gameRunning = false;
     questionLoop.lock();
@@ -273,6 +281,7 @@ void GameManager::askQuestion(const string &question) {
 
 void GameManager::waitForAnswer() {
     while (!userA->isAnswered() && userA->isConnected() && GameManager::getInstance().isGameRunning()) {
+        //TODO MUTEX
         sleep(1);
     }
 }
