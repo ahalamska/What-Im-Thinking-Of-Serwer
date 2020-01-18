@@ -53,6 +53,7 @@ User::User(int fd, in_addr ip, string name, string type) {
 void User::resendAnswer(const basic_string<char> &message) {
     if(GameManager::getInstance().guessWord("")) return;
     this->answered = true;
+    GameManager::getInstance().waitingForAnswer.unlock();
     string delimiter = "->";
     string questionToResend = message
             .substr(0, message.find(delimiter));
@@ -76,10 +77,11 @@ void User::askQuestion() {
             return;
         }
         askForQuestion();
-        //TODO MUTEX;
-        sleep(5);
+        questionReady.lock();
     }
-    GameManager::getInstance().askQuestion(question);
+    if(GameManager::getInstance().isGameRunning()) {
+        GameManager::getInstance().askQuestion(question);
+    }
     this->question = "";
 }
 
@@ -96,8 +98,8 @@ void User::guessWord(string word) {
         GameManager::getInstance().resendGoodGuess(word, socketFd);
         GameManager::getInstance().setWinnerFd(socketFd);
         GameManager::getInstance().setGameRunning(false);
-        questionLoop.lock();
-        questionLoop.unlock();
+        GameManager::getInstance().questionLoop.lock();
+        GameManager::getInstance().questionLoop.unlock();
     }
 }
 
@@ -134,10 +136,12 @@ void User::runReadingAnswers() {
                     case QUESTION:
                         cout << "Received question form " << name << endl;
                         saveQuestion(message.message);
+                        questionReady.unlock();
                         break;
                     case NAME:
                         name = message.message;
-                        cout << "Added name for user B " << name << endl;
+                        cout << "Added name for user B : " << name << endl;
+                        GameManager::getInstance().waitingForName.unlock();
                         break;
                     case EMPTY:
                         break;
@@ -148,6 +152,7 @@ void User::runReadingAnswers() {
         }
     }
     cout << "Finished reading loop of user " << endl;
+    readingLoopEnded.lock();
 }
 
 void User::saveQuestion(string question) {

@@ -24,6 +24,7 @@ class User {
 
 
 protected:
+    mutex questionReady;
     string type;
     int socketFd;
     in_addr ip{};
@@ -67,6 +68,8 @@ public:
 
 
     int getLife();
+
+    mutex readingLoopEnded;
 };
 
 

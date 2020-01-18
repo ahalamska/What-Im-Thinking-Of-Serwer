@@ -10,10 +10,10 @@ using namespace std;
 
 
 void GameManager::gamesLoop() {
-    gameStart.lock();
-
-    if (this->users.empty()) {
+    cout << "Started game loop!" << endl;
+    while (this->users.empty()) {
         gameStart.lock();
+        cout << "Unlocked users!" << endl;
     }
     createGame();
     cout << "Ended first game!" << endl;
@@ -27,7 +27,7 @@ void GameManager::gamesLoop() {
             createGame();
         } else if (winnerFd != 0) {
             cout << "winner : " << winnerFd << endl;
-            endGame(winnerFd);
+            endGameIfUserBWon(winnerFd);
             createGame();
         } else if (winnerFd == 0) {
             cout << "user A left game" << endl;
@@ -42,8 +42,7 @@ void GameManager::createGame() {
     cout << "Creating new game... " << endl;
     winnerFd = 0;
     while (word.empty()) {
-        //TODO mutex
-        sleep(1);
+        waitingForWord.lock();
     }
     gameRunning = true;
     thread questionThreadLoc([]() {
@@ -52,17 +51,23 @@ void GameManager::createGame() {
     questionThreadLoc.join();
 }
 
-void GameManager::endGameIfNoOneGuessedAnswer() {
-    cout << "Ending game UserA won!" << endl;
+void GameManager::endGame() {
     this->word = "";
     this->questionsAnswers.clear();
+    waitingForWord.unlock();
+    waitingForUsers.unlock();
+    waitingForAnswer.unlock();
+}
+
+void GameManager::endGameIfNoOneGuessedAnswer() {
+    cout << "Ending game UserA won!" << endl;
+    endGame();
     resendThatUserAWon();
 }
 
-void GameManager::endGame(int winnerFd) {
+void GameManager::endGameIfUserBWon(int winnerFd) {
     cout << "Ending Game UserB : " << this->users[winnerFd]->getName() << " won!" << endl;
-    this->word = "";
-    this->questionsAnswers.clear();
+    endGame();
     changeUserAtoUserB(winnerFd);
 }
 
@@ -82,16 +87,15 @@ void GameManager::changeWinnerToUserA(int winnerFd) {
 
 void GameManager::endGameWhenUserALeft() {
     cout << "Ending Game UserA left game " << endl;
-    this->word = "";
+    endGame();
     auto iterator = users.begin();
     std::advance(iterator, random() % users.size());
-    User* newUserA = this->users[iterator->first];
+    User *newUserA = this->users[iterator->first];
     newUserA->setType(USER_A_TYPE);
     this->userA = newUserA;
     this->users.erase(newUserA->getSocketFd());
-    this->questionsAnswers.clear();
     MessagesHandler::getInstance().sendMessage(userA->getSocketFd(), "UserA left", USER_A);
-    for(auto userB : users) {
+    for (auto userB : users) {
         MessagesHandler::getInstance().sendMessage(userB.second->getSocketFd(), "UserA left", USER_B);
     }
 
@@ -101,15 +105,15 @@ void GameManager::questionsLoop() {
     cout << "Started question Loop" << endl;
     questionLoop.lock();
     while (gameRunning) {
+        if (this->users.empty()) {
+            waitingForUsers.lock();
+        }
         for (auto &user : this->users) {
             cout << "UserB " << user.second->getName() << " with life: " << user.second->getLife() << " turn!" << endl;
             if (user.second->getLife() > 0 && !user.second->getName().empty()) {
                 this->userA->setAnswered(false);
                 user.second->askQuestion();
                 waitForAnswer();
-            } else {
-                //TODO mutex
-                sleep(2);
             }
         }
     }
@@ -175,6 +179,7 @@ void GameManager::setWord(const string &word) {
         for (char i : word)
             lowerWord += tolower(i, loc);
         this->word = lowerWord;
+        waitingForWord.unlock();
     }
 }
 
@@ -191,22 +196,26 @@ void GameManager::addUserA(User *userA) {
 
 void GameManager::addUser(User *user) {
     printf("Adding user B\n");
-    users[user->getSocketFd()] = user;
-
     thread userThread([user]() {
         user->runReadingAnswers();
     });
-    printf("Sending information about UserType : User B\n");
+    printf("Sending information about UserType : Guesser\n");
 
     MessagesHandler::getInstance().sendMessage(user->getSocketFd(), "", USER_B);
+
+    while (user->getName().empty()) {
+        waitingForName.lock();
+        if (!user->isConnected()) {
+            return;
+        }
+    }
+
+    users[user->getSocketFd()] = user;
+    waitingForUsers.unlock();
 
     if (users.size() == 1) {
         gameStart.unlock();
     } else {
-        while (user->getName().empty()) {
-            //TODO mutex
-            sleep(1);
-        }
         addUserToAlreadyBeganGame(user);
     }
     userThread.join();
@@ -216,37 +225,34 @@ void GameManager::addUser(User *user) {
 
 void GameManager::removeUser(User *user) {
     printf("removing user:  %s\n", user->getName().c_str());
+    waitingForName.unlock();
     user->setConnected(false);
+    user->readingLoopEnded.lock();
+    user->readingLoopEnded.unlock();
+
     shutdown(user->getSocketFd(), SHUT_RDWR);
     close(user->getSocketFd());
-    {
-        unique_lock<mutex> lock(clientFdsLock);
-        this->users.erase(user->getSocketFd());
-        delete user;
-    }
+    this->users.erase(user->getSocketFd());
+    delete user;
 }
 
 void GameManager::removeUser(int fd) {
-    User *user = users[fd];
-    printf("removing user:  %s\n", user->getName().c_str());
-    user->setConnected(false);
-    shutdown(fd, SHUT_RDWR);
-    close(fd);
-    this->users.erase(fd);
-    delete user;
+    removeUser(users[fd]);
 }
 
 void GameManager::removeUserA() {
     printf("removing user A");
     userA->setConnected(false);
+    waitingForAnswer.unlock();
+    gameRunning = false;
 
     shutdown(userA->getSocketFd(), SHUT_RDWR);
     close(userA->getSocketFd());
-    delete userA;
 
-    gameRunning = false;
     questionLoop.lock();
     questionLoop.unlock();
+    delete userA;
+
 }
 
 void GameManager::searchForAlivePlayers() {
@@ -281,8 +287,7 @@ void GameManager::askQuestion(const string &question) {
 
 void GameManager::waitForAnswer() {
     while (!userA->isAnswered() && userA->isConnected() && GameManager::getInstance().isGameRunning()) {
-        //TODO MUTEX
-        sleep(1);
+        waitingForAnswer.lock();
     }
 }
 

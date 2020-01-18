@@ -10,12 +10,6 @@
 #include "../UserManagement/User.h"
 
 using namespace std;
-static condition_variable CV;
-static mutex clientFdsLock;
-static mutex gameStart;
-static mutex questionLoop;
-
-
 // forward declaration
 class User;
 
@@ -41,16 +35,23 @@ private:
 
     GameManager(){}
 
-public:
-    void setGameRunning(bool gameRunning);
-
-public:
-    void setWinnerFd(int winnerFd);
-
-private:
     bool gameRunning;
 
     int winnerFd = 0;
+
+public:
+
+    mutex gameStart;
+    mutex questionLoop;
+    mutex waitingForWord;
+    mutex waitingForUsers;
+    mutex waitingForName;
+    mutex waitingForAnswer;
+
+
+    void setGameRunning(bool gameRunning);
+
+    void setWinnerFd(int winnerFd);
 
 public:
 
@@ -93,7 +94,7 @@ public:
 
     void removeUserA();
 
-    void endGame(int winnerFd);
+    void endGameIfUserBWon(int winnerFd);
 
     void waitForAnswer();
 
@@ -112,6 +113,8 @@ public:
     void resendThatUserAWon();
 
     void removeUser(int fd);
+
+    void endGame();
 };
 
 
