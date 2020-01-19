@@ -24,7 +24,6 @@ class User {
 
 
 protected:
-    mutex questionReady;
     string type;
     int socketFd;
     in_addr ip{};
@@ -35,6 +34,7 @@ protected:
     bool answered = true;
 
 public:
+    mutex questionReady;
 
     User(int fd, in_addr ip, string name, string type);
     const string &getType() const;

@@ -54,9 +54,6 @@ void GameManager::createGame() {
 void GameManager::endGame() {
     this->word = "";
     this->questionsAnswers.clear();
-    waitingForWord.unlock();
-    waitingForUsers.unlock();
-    waitingForAnswer.unlock();
 }
 
 void GameManager::endGameIfNoOneGuessedAnswer() {
@@ -119,6 +116,16 @@ void GameManager::questionsLoop() {
     }
     cout << "Finished question loop " << endl;
     endQuestionLoop();
+}
+
+void GameManager::winGame(int socketFd){
+    resendGoodGuess(word, socketFd);
+    setWinnerFd(socketFd);
+    setGameRunning(false);
+    for(auto user : users){
+        user.second->questionReady.unlock();
+    }
+    waitingForAnswer.unlock();
 }
 
 bool GameManager::guessWord(const string &word) {
@@ -241,10 +248,13 @@ void GameManager::removeUser(int fd) {
 }
 
 void GameManager::removeUserA() {
-    printf("removing user A");
+    printf("removing user A\n");
     userA->setConnected(false);
     waitingForAnswer.unlock();
     gameRunning = false;
+    waitingForWord.unlock();
+
+    waitingForUsers.unlock();
 
     shutdown(userA->getSocketFd(), SHUT_RDWR);
     close(userA->getSocketFd());

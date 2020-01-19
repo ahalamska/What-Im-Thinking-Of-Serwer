@@ -95,16 +95,12 @@ void User::guessWord(string word) {
         this->life--;
         GameManager::getInstance().searchForAlivePlayers();
     } else {
-        GameManager::getInstance().resendGoodGuess(word, socketFd);
-        GameManager::getInstance().setWinnerFd(socketFd);
-        GameManager::getInstance().setGameRunning(false);
-        GameManager::getInstance().questionLoop.lock();
-        GameManager::getInstance().questionLoop.unlock();
+        GameManager::getInstance().winGame(this->socketFd);
     }
 }
 
 void User::runReadingAnswers() {
-    cout << "Run user A loop" << endl;
+    cout << "Run user "<< this->type <<" loop: "<< this->name << endl;
     list<Message> messages;
     while (connected) {
         messages = MessagesHandler::getInstance().readMessage(socketFd);
@@ -151,7 +147,7 @@ void User::runReadingAnswers() {
             }
         }
     }
-    cout << "Finished reading loop of user " << endl;
+    cout << "Finished reading loop of user \n" << endl;
     readingLoopEnded.lock();
 }
 
@@ -164,10 +160,6 @@ void User::saveQuestion(string question) {
 void User::resetUser() {
     this->question = "";
     this->life = BEGINNING_NUMBER_OF_LIFE;
-}
-
-const string &User::getType() const {
-    return type;
 }
 
 void User::setType(const string &type) {

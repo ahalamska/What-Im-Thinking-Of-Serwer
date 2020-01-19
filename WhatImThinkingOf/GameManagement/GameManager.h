@@ -115,6 +115,8 @@ public:
     void removeUser(int fd);
 
     void endGame();
+
+    void winGame(int fd);
 };
 
 
