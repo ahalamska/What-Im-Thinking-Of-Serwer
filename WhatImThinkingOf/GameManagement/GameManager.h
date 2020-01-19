@@ -117,6 +117,8 @@ public:
     void endGame();
 
     void winGame(int fd);
+
+    User *getUserA() const;
 };
 
 

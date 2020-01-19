@@ -190,6 +190,10 @@ void GameManager::setWord(const string &word) {
     }
 }
 
+User *GameManager::getUserA() const {
+    return userA;
+}
+
 void GameManager::addUserA(User *userA) {
     printf("Adding user A\n");
     this->userA = userA;
@@ -227,19 +231,17 @@ void GameManager::addUser(User *user) {
     }
     userThread.join();
     cout << "Ended add function XD " << endl;
-
 }
 
 void GameManager::removeUser(User *user) {
     printf("removing user:  %s\n", user->getName().c_str());
+    this->users.erase(user->getSocketFd());
+
     waitingForName.unlock();
     user->setConnected(false);
-    user->readingLoopEnded.lock();
-    user->readingLoopEnded.unlock();
 
     shutdown(user->getSocketFd(), SHUT_RDWR);
     close(user->getSocketFd());
-    this->users.erase(user->getSocketFd());
     delete user;
 }
 
@@ -262,6 +264,7 @@ void GameManager::removeUserA() {
     questionLoop.lock();
     questionLoop.unlock();
     delete userA;
+    this->userA = nullptr;
 
 }
 

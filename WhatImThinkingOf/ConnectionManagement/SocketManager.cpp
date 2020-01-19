@@ -54,7 +54,7 @@ void setReuseAddr(int sock) {
 
 void startListening() {
     configureSocket();
-    acceptGamerA();
+    acceptNewClients();
 }
 
 void configureSocket() {
@@ -77,7 +77,7 @@ void configureSocket() {
 
 void acceptNewClients() {
     while (true) {
-        printf("Waiting for new user B\n");
+        printf("Waiting for new user\n");
         // prepare placeholders for client address
         sockaddr_in clientAddr{};
         socklen_t clientAddrSize = sizeof(clientAddr);
@@ -85,31 +85,22 @@ void acceptNewClients() {
         // accept new connection
         auto clientFd = accept(addingUsersFd, (sockaddr *) &clientAddr, &clientAddrSize);
         if (clientFd == -1) error(1, errno, "Accepting connection failed");
-        User *userRef = new User(clientFd, clientAddr.sin_addr, "", USER_B_TYPE);
-        thread([userRef]() {
-            GameManager::getInstance().addUser(userRef);
-        }).detach();
+
+        if(GameManager::getInstance().getUserA() == nullptr){
+            User* userA = new User(clientFd, clientAddr.sin_addr, "", USER_A_TYPE);
+            thread ([userA]() {
+                GameManager::getInstance().addUserA(userA);
+            }).detach();
+        }
+        else {
+            User *userRef = new User(clientFd, clientAddr.sin_addr, "", USER_B_TYPE);
+            thread([userRef]() {
+                GameManager::getInstance().addUser(userRef);
+            }).detach();
+        }
+
         // tell who has connected
         printf("New connection from: %s:%hu (fd: %d) \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port),
                clientFd);
     }
-}
-
-void acceptGamerA() {
-    // prepare placeholders for client address
-    sockaddr_in clientAddr{};
-    socklen_t clientAddrSize = sizeof(clientAddr);
-
-    // accept new connection
-    auto clientFd = accept(addingUsersFd, (sockaddr *) &clientAddr, &clientAddrSize);
-    if (clientFd == -1) error(1, errno, "Accepting connection failed");
-    printf("UserB A connected from: %s:%hu (fd: %d) \n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port),
-           clientFd);
-    User* userA = new User(clientFd, clientAddr.sin_addr, "", USER_A_TYPE);
-
-    thread addingUserAThread([userA]() {
-        GameManager::getInstance().addUserA(userA);
-    });
-    acceptNewClients();
-    addingUserAThread.join();
 }

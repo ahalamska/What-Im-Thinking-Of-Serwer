@@ -100,8 +100,9 @@ void User::guessWord(string word) {
 }
 
 void User::runReadingAnswers() {
-    cout << "Run user "<< this->type <<" loop: "<< this->name << endl;
+    cout << "Run user "<< this->type <<" loop "<< endl;
     list<Message> messages;
+    readingLoopEnded.lock();
     while (connected) {
         messages = MessagesHandler::getInstance().readMessage(socketFd);
         for(const Message& message: messages) {
@@ -147,8 +148,8 @@ void User::runReadingAnswers() {
             }
         }
     }
-    cout << "Finished reading loop of user \n" << endl;
-    readingLoopEnded.lock();
+    cout << "Finished reading loop of user "<< endl;
+    readingLoopEnded.unlock();
 }
 
 void User::saveQuestion(string question) {
