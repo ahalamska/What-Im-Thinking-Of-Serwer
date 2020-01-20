@@ -6,10 +6,11 @@
 #define SK2_USER_H
 
 
-#include <cygwin/in.h>
+#include <sys/socket.h>
 #include <string>
 #include <list>
 #include <mutex>
+#include <netinet/in.h>
 #include "../ConnectionManagement/Message.h"
 
 using namespace std;

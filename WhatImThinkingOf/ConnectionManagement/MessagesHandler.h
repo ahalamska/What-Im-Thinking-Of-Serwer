@@ -6,7 +6,6 @@
 #define SK2_MESSAGESHANDLER_H
 
 #include <map>
-#include <cygwin/socket.h>
 #include <sys/socket.h>
 #include <iostream>
 #include <list>
