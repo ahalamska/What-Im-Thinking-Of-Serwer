@@ -47,6 +47,7 @@ public:
     mutex waitingForUsers;
     mutex waitingForName;
     mutex waitingForAnswer;
+    mutex maxUsers;
 
 
     void setGameRunning(bool gameRunning);
@@ -119,6 +120,7 @@ public:
     void winGame(int fd);
 
     User *getUserA() const;
+
 };
 
 

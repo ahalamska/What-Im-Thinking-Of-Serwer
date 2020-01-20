@@ -91,13 +91,14 @@ MessagesHandler::MessagesHandler() {
     sendMessageTypeValueMap[USER_A] = "A||";
     sendMessageTypeValueMap[USER_B] = "B||";
     sendMessageTypeValueMap[WIN] = "W||";
+    sendMessageTypeValueMap[WAIT] = "WAIT||";
     sendMessageTypeValueMap[LOOSE] = "L||";
     sendMessageTypeValueMap[NEW_WORD] = "NW||";
     sendMessageTypeValueMap[QA] = "QA||";
     sendMessageTypeValueMap[QA_END] = "QAE||";
     sendMessageTypeValueMap[QUESTION] = "Q||";
     sendMessageTypeValueMap[ASK_QUESTION] = "AQ||";
-    sendMessageTypeValueMap[GAME_BEGAN] = "GB||";
+    sendMessageTypeValueMap[GAME_BEGAN] = "BG||";
     sendMessageTypeValueMap[WRONG_GUESS] = "WG||";
     sendMessageTypeValueMap[CLOSE] = "CL||";
     sendMessageTypeValueMap[NAME] = "N||";

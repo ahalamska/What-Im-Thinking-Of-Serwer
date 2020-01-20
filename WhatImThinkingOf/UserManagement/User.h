@@ -34,7 +34,7 @@ protected:
     bool answered = true;
 
 public:
-    mutex questionReady;
+    timed_mutex questionReady;
 
     User(int fd, in_addr ip, string name, string type);
     const string &getType() const;

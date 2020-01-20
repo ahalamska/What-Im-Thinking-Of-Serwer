@@ -17,7 +17,7 @@ using namespace std;
 const char *PORT = "8081";
 int addingUsersFd;
 
-uint16_t readPort(char *txt);
+uint16_t readPort(const char *txt);
 
 void setReuseAddr(int sock);
 
@@ -27,7 +27,6 @@ void acceptNewClients();
 
 void configureSocket();
 
-void acceptGamerA();
 
 int main(int argc, char **argv) {
     thread gamesThread([]() {

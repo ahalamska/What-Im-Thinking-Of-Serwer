@@ -53,13 +53,14 @@ User::User(int fd, in_addr ip, string name, string type) {
 void User::resendAnswer(const basic_string<char> &message) {
     if(GameManager::getInstance().guessWord("")) return;
     this->answered = true;
-    GameManager::getInstance().waitingForAnswer.unlock();
     string delimiter = "->";
     string questionToResend = message
             .substr(0, message.find(delimiter));
     string answerToResend = message
             .substr(message.find(delimiter) + delimiter.length(), message.length());
     GameManager::getInstance().saveAnswer(questionToResend, answerToResend);
+    GameManager::getInstance().waitingForAnswer.unlock();
+
 }
 
 void User::askQuestion(const string &question) {
@@ -72,12 +73,13 @@ void User::askForQuestion() {
 }
 
 void User::askQuestion() {
+    using Ms = std::chrono::milliseconds;
     while (question.empty()) {
         if (!connected || !GameManager::getInstance().isGameRunning()) {
             return;
         }
         askForQuestion();
-        questionReady.lock();
+        questionReady.try_lock_for(Ms(5000));
     }
     if(GameManager::getInstance().isGameRunning()) {
         GameManager::getInstance().askQuestion(question);

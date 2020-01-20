@@ -7,6 +7,7 @@
 enum MessageType{
     USER_A,
     USER_B,
+    WAIT,
     WIN,
     LOOSE,
     NEW_WORD,

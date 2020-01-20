@@ -6,6 +6,7 @@
 #include <sys/unistd.h>
 #include "GameManager.h"
 
+int MAX_USERS_COUNT = 15;
 using namespace std;
 
 
@@ -21,17 +22,17 @@ void GameManager::gamesLoop() {
         while (this->users.empty()) {
             gameStart.lock();
         }
-        if (winnerFd == userA->getSocketFd()) {
+        if (winnerFd == 0) {
+            cout << "user A left game" << endl;
+            endGameWhenUserALeft();
+            createGame();
+        } else if (winnerFd == userA->getSocketFd()) {
             cout << "winner : " << winnerFd << endl;
             endGameIfNoOneGuessedAnswer();
             createGame();
         } else if (winnerFd != 0) {
             cout << "winner : " << winnerFd << endl;
             endGameIfUserBWon(winnerFd);
-            createGame();
-        } else if (winnerFd == 0) {
-            cout << "user A left game" << endl;
-            endGameWhenUserALeft();
             createGame();
         }
     }
@@ -102,15 +103,17 @@ void GameManager::questionsLoop() {
     cout << "Started question Loop" << endl;
     questionLoop.lock();
     while (gameRunning) {
-        if (this->users.empty()) {
+        while (this->users.empty()) {
             waitingForUsers.lock();
         }
         for (auto &user : this->users) {
-            cout << "UserB " << user.second->getName() << " with life: " << user.second->getLife() << " turn!" << endl;
-            if (user.second->getLife() > 0 && !user.second->getName().empty()) {
-                this->userA->setAnswered(false);
-                user.second->askQuestion();
-                waitForAnswer();
+            if(user.second != nullptr){
+                cout << "UserB " << user.second->getName() << " with life: " << user.second->getLife() << " turn!" << endl;
+                if (user.second->getLife() > 0 && !user.second->getName().empty()) {
+                    this->userA->setAnswered(false);
+                    user.second->askQuestion();
+                    waitForAnswer();
+                }
             }
         }
     }
@@ -139,6 +142,7 @@ bool GameManager::guessWord(const string &word) {
 void GameManager::resendResponse(const string &question, const string &response) {
     this->questionsAnswers[question] = response;
     string sentence = question + "->" + response;
+    cout<<users.size()<<endl;
     for (auto user : users) {
         int fd = user.first;
         MessagesHandler::getInstance().sendMessage(fd, sentence, QA);
@@ -221,7 +225,15 @@ void GameManager::addUser(User *user) {
         }
     }
 
+    while(users.size() == MAX_USERS_COUNT){
+        MessagesHandler::getInstance().sendMessage(user->getSocketFd(), "", WAIT);
+        maxUsers.lock();
+    }
+    MessagesHandler::getInstance().sendMessage(user->getSocketFd(), "", GAME_BEGAN);
+
+
     users[user->getSocketFd()] = user;
+
     waitingForUsers.unlock();
 
     if (users.size() == 1) {
@@ -243,6 +255,7 @@ void GameManager::removeUser(User *user) {
     shutdown(user->getSocketFd(), SHUT_RDWR);
     close(user->getSocketFd());
     delete user;
+    maxUsers.unlock();
 }
 
 void GameManager::removeUser(int fd) {
