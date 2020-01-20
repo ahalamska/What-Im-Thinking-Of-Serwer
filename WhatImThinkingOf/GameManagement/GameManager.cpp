@@ -104,10 +104,11 @@ void GameManager::questionsLoop() {
     questionLoop.lock();
     while (gameRunning) {
         while (this->users.empty()) {
+            cout<<"czekamy na userów"<<endl;
             waitingForUsers.lock();
         }
         for (auto &user : this->users) {
-            if(user.second != nullptr){
+            if(user.second != nullptr || !user.second->isConnected()){
                 cout << "UserB " << user.second->getName() << " with life: " << user.second->getLife() << " turn!" << endl;
                 if (user.second->getLife() > 0 && !user.second->getName().empty()) {
                     this->userA->setAnswered(false);
@@ -115,7 +116,11 @@ void GameManager::questionsLoop() {
                     waitForAnswer();
                 }
             }
+            if(user.second == nullptr || !user.second->isConnected()){
+                break;
+            }
         }
+
     }
     cout << "Finished question loop " << endl;
     endQuestionLoop();
@@ -142,7 +147,6 @@ bool GameManager::guessWord(const string &word) {
 void GameManager::resendResponse(const string &question, const string &response) {
     this->questionsAnswers[question] = response;
     string sentence = question + "->" + response;
-    cout<<users.size()<<endl;
     for (auto user : users) {
         int fd = user.first;
         MessagesHandler::getInstance().sendMessage(fd, sentence, QA);
@@ -259,7 +263,9 @@ void GameManager::removeUser(User *user) {
 }
 
 void GameManager::removeUser(int fd) {
-    removeUser(users[fd]);
+    if(this->users.find(fd) != users.end()) {
+        removeUser(users[fd]);
+    }
 }
 
 void GameManager::removeUserA() {
