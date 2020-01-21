@@ -46,10 +46,7 @@ void GameManager::createGame() {
         waitingForWord.lock();
     }
     gameRunning = true;
-    thread questionThreadLoc([]() {
-        GameManager::getInstance().questionsLoop();
-    });
-    questionThreadLoc.join();
+    GameManager::getInstance().questionsLoop();
 }
 
 void GameManager::endGame() {
@@ -246,7 +243,7 @@ void GameManager::addUser(User *user) {
         addUserToAlreadyBeganGame(user);
     }
     userThread.join();
-    cout << "Ended add function XD " << endl;
+    cout << "Ended add function" << endl;
 }
 
 void GameManager::removeUser(User *user) {
